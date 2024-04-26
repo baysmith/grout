@@ -2,8 +2,8 @@ use std::fs::{create_dir_all, write, File};
 use std::io::Read;
 
 use anyhow::format_err;
-use regex::{Captures, Regex};
 use serde::{Deserialize, Serialize};
+use toml_edit::{value, DocumentMut};
 
 use crate::Result;
 
@@ -64,32 +64,15 @@ pub fn toggle_autostart() -> Result<()> {
 
     config.read_to_string(&mut config_str)?;
 
-    let re_line = Regex::new(r"(?m)^(auto_start:)(.*)$")?;
-    let updated_config = if let Some(cap) = re_line.captures_iter(&config_str).next() {
-        if re_line.captures_len() == 3 {
-            let re_cap = Regex::new(r"(?m)^(y|Y|yes|Yes|YES|true|True|TRUE|on|On|ON)$")?;
-
-            let enabled = re_cap.find(cap[2].trim());
-
-            let updated_config = re_line.replace(&config_str, |caps: &Captures| {
-                format!("{} {}", &caps[1], enabled.is_none())
-            });
-
-            Some(updated_config.as_ref().to_owned())
-        } else {
-            None
-        }
+    let mut config_doc = config_str.parse::<DocumentMut>().expect("invalid config.toml");
+    let enabled = if let Some(auto_start) = config_doc["auto_start"].as_bool() {
+        !auto_start
     } else {
-        None
+        false
     };
+    config_doc["auto_start"] = value(enabled);
 
-    let updated_config = if let Some(updated_config) = updated_config {
-        updated_config
-    } else {
-        format!("{}\n\nauto_start: true", config_str)
-    };
-
-    write(&config_path, updated_config)?;
+    write(&config_path, config_doc.to_string())?;
 
     Ok(())
 }
