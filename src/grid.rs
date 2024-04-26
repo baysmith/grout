@@ -430,11 +430,7 @@ impl Grid {
             return Some(shift_rect);
         }
 
-        if let Some(selected_tile) = self.selected_tile {
-            Some(self.zone_area(selected_tile.0, selected_tile.1))
-        } else {
-            None
-        }
+        self.selected_tile.map(|tile| self.zone_area(tile.0, tile.1))
     }
 
     pub fn unhighlight_all_tiles(&mut self) {

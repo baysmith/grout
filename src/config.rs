@@ -69,10 +69,10 @@ pub fn toggle_autostart() -> Result<()> {
         if re_line.captures_len() == 3 {
             let re_cap = Regex::new(r"(?m)^(y|Y|yes|Yes|YES|true|True|TRUE|on|On|ON)$")?;
 
-            let enabled = re_cap.find(&cap[2].trim());
+            let enabled = re_cap.find(cap[2].trim());
 
             let updated_config = re_line.replace(&config_str, |caps: &Captures| {
-                format!("{} {}", &caps[1], !enabled.is_some())
+                format!("{} {}", &caps[1], enabled.is_none())
             });
 
             Some(updated_config.as_ref().to_owned())
