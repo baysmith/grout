@@ -178,7 +178,7 @@ unsafe fn show_about() {
     let title = w!("About");
 
     let msg = format!(
-        "Grout - v{}\n\nCopyright © 2020 Cory Forsstrom",
+        "Grout - v{}\n\nCopyright © 2024 Bradley Smith",
         env!("CARGO_PKG_VERSION")
     );
 
