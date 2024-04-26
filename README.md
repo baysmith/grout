@@ -33,6 +33,28 @@ Click for full video
 
 ## Config
 
-See [example config](https://github.com/tarkah/grout/wiki/Example-Config) in the wiki for a full list of all options.
+```toml
+# Example config file for Grout
 
-- A configuration file will be created at `%APPDATA%\grout\config.yml` that can be customized. You can also open the config file from the system tray icon.
+# Margin between windows, in pixels
+margins = 10
+
+# Padding between edge of monitor and windows, in pixels
+window_padding = 10
+
+# Hotkey to activate grid. Valid modifiers are CTRL, ALT, SHIFT, WIN
+hotkey = "CTRL+ALT+S"
+
+# Hotkey to activate grid for a quick resize. Grid will automatically
+# close after resize operation.
+#hotkey_quick_resize = "CTRL+ALT+Q"
+
+# Hotkey to maximize / restore the active window
+#hotkey_maximize_toggle = "CTRL+ALT+X"
+
+# Automatically launch program on startup
+auto_start = false
+```
+
+- A configuration file will be created at `%APPDATA%\grout\config.toml` that can be customized. You can also open the config file from the system tray icon.
+

@@ -7,27 +7,27 @@ use serde::{Deserialize, Serialize};
 
 use crate::Result;
 
-static EXAMPLE_CONFIG: &str = "---
+static EXAMPLE_CONFIG: &str = r#"
 # Example config file for Grout
 
 # Margin between windows, in pixels
-margins: 10
+margins = 10
 
 # Padding between edge of monitor and windows, in pixels
-window_padding: 10
+window_padding = 10
 
 # Hotkey to activate grid. Valid modifiers are CTRL, ALT, SHIFT, WIN
-hotkey: CTRL+ALT+S
+hotkey = "CTRL+ALT+S"
 
 # Hotkey to activate grid for a quick resize. Grid will automatically close after resize operation.
-#hotkey_quick_resize: CTRL+ALT+Q
+#hotkey_quick_resize = "CTRL+ALT+Q"
 
 # Hotkey to maximize / restore the active window
-#hotkey_maximize_toggle: CTRL+ALT+X
+#hotkey_maximize_toggle = "CTRL+ALT+X"
 
 # Automatically launch program on startup
-auto_start: false
-";
+auto_start = false
+"#;
 
 pub fn load_config() -> Result<Config> {
     let mut config_path =
@@ -38,7 +38,7 @@ pub fn load_config() -> Result<Config> {
         create_dir_all(&config_path)?;
     }
 
-    config_path.push("config.yml");
+    config_path.push("config.toml");
     if !config_path.exists() {
         write(&config_path, EXAMPLE_CONFIG)?;
     }
@@ -46,7 +46,7 @@ pub fn load_config() -> Result<Config> {
     config::Config::builder()
         .add_source(config::File::new(
             config_path.to_str().expect("invalid config path"),
-            config::FileFormat::Yaml,
+            config::FileFormat::Toml,
         ))
         .build()?
         .try_deserialize::<Config>()
@@ -57,7 +57,7 @@ pub fn toggle_autostart() -> Result<()> {
     let mut config_path =
         dirs::config_dir().ok_or_else(|| format_err!("Failed to get config directory"))?;
     config_path.push("grout");
-    config_path.push("config.yml");
+    config_path.push("config.toml");
 
     let mut config = File::open(&config_path)?;
     let mut config_str = String::new();
