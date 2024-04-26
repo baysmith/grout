@@ -1,66 +1,65 @@
+use crossbeam_channel::{select, Receiver};
 use std::mem;
-use std::ptr;
 use std::thread;
 use std::time::Duration;
-
-use crossbeam_channel::{select, Receiver};
-
-use winapi::shared::{
-    minwindef::{LPARAM, LRESULT, UINT, WPARAM},
-    windef::HWND,
+use windows::{
+    core::{w, PCWSTR},
+    Win32::{
+        Foundation::{COLORREF, HWND, LPARAM, LRESULT, WPARAM},
+        Graphics::Gdi::CreateSolidBrush,
+        System::LibraryLoader::GetModuleHandleW,
+        UI::WindowsAndMessaging::{
+            CreateWindowExW, DefWindowProcW, DispatchMessageW, PeekMessageW, RegisterClassExW,
+            SetLayeredWindowAttributes, TranslateMessage, HMENU, LWA_ALPHA,
+            PEEK_MESSAGE_REMOVE_TYPE, WNDCLASSEXW, WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TOPMOST,
+            WS_EX_TRANSPARENT, WS_POPUP, WS_SYSMENU, WS_VISIBLE,
+        },
+    },
 };
-use winapi::um::libloaderapi::GetModuleHandleW;
-use winapi::um::wingdi::{CreateSolidBrush, RGB};
 
-use winapi::um::winuser::{
-    CreateWindowExW, DefWindowProcW, DispatchMessageW, PeekMessageW, RegisterClassExW,
-    SetLayeredWindowAttributes, TranslateMessage, LWA_ALPHA, WNDCLASSEXW, WS_EX_LAYERED,
-    WS_EX_NOACTIVATE, WS_EX_TOPMOST, WS_EX_TRANSPARENT, WS_POPUP, WS_SYSMENU, WS_VISIBLE,
-};
-
-use crate::str_to_wide;
+use crate::common::RGB;
 use crate::window::Window;
 use crate::Message;
 use crate::CHANNEL;
 
 pub fn spawn_preview_window(close_msg: Receiver<()>) {
     thread::spawn(move || unsafe {
-        let hInstance = GetModuleHandleW(ptr::null());
+        let hInstance = GetModuleHandleW(PCWSTR::null()).expect("failed GetModuleHandleW");
 
-        let class_name = str_to_wide!("Grout Zone Preview");
+        let class_name = w!("Grout Zone Preview");
 
         let mut class = mem::zeroed::<WNDCLASSEXW>();
         class.cbSize = mem::size_of::<WNDCLASSEXW>() as u32;
         class.lpfnWndProc = Some(callback);
-        class.hInstance = hInstance;
-        class.lpszClassName = class_name.as_ptr();
+        class.hInstance = hInstance.into();
+        class.lpszClassName = class_name;
         class.hbrBackground = CreateSolidBrush(RGB(0, 77, 128));
 
         RegisterClassExW(&class);
 
         let hwnd = CreateWindowExW(
             WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST | WS_EX_NOACTIVATE,
-            class_name.as_ptr(),
-            ptr::null(),
+            class_name,
+            PCWSTR::null(),
             WS_POPUP | WS_VISIBLE | WS_SYSMENU,
             0,
             0,
             0,
             0,
-            ptr::null_mut(),
-            ptr::null_mut(),
+            HWND::default(),
+            HMENU::default(),
             hInstance,
-            ptr::null_mut(),
+            None,
         );
 
-        SetLayeredWindowAttributes(hwnd, 0, 107, LWA_ALPHA);
+        let _ = SetLayeredWindowAttributes(hwnd, COLORREF::default(), 107, LWA_ALPHA);
 
         let _ = &CHANNEL.0.clone().send(Message::PreviewWindow(Window(hwnd)));
 
         let mut msg = mem::zeroed();
         loop {
-            if PeekMessageW(&mut msg, ptr::null_mut(), 0, 0, 1) > 0 {
-                TranslateMessage(&msg);
+            if PeekMessageW(&mut msg, HWND::default(), 0, 0, PEEK_MESSAGE_REMOVE_TYPE(1)).into() {
+                let _ = TranslateMessage(&msg);
                 DispatchMessageW(&msg);
             };
 
@@ -76,7 +75,7 @@ pub fn spawn_preview_window(close_msg: Receiver<()>) {
 
 unsafe extern "system" fn callback(
     hWnd: HWND,
-    Msg: UINT,
+    Msg: u32,
     wParam: WPARAM,
     lParam: LPARAM,
 ) -> LRESULT {

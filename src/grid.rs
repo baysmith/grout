@@ -1,14 +1,13 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::mem;
+use windows::Win32::Graphics::Gdi::{
+    BeginPaint, CreateSolidBrush, DeleteObject, EndPaint, FillRect, FrameRect, HBRUSH, HDC,
+    PAINTSTRUCT,
+};
 
-use serde::{Deserialize, Serialize};
-
-use winapi::shared::windef::{HBRUSH, HDC};
-use winapi::um::wingdi::{CreateSolidBrush, DeleteObject, RGB};
-use winapi::um::winuser::{BeginPaint, EndPaint, FillRect, FrameRect, PAINTSTRUCT};
-
-use crate::common::{get_active_monitor_name, get_work_area, Rect};
+use crate::common::{get_active_monitor_name, get_work_area, Rect, RGB};
 use crate::config::Config;
 use crate::window::Window;
 use crate::ACTIVE_PROFILE;
@@ -430,7 +429,8 @@ impl Grid {
             return Some(shift_rect);
         }
 
-        self.selected_tile.map(|tile| self.zone_area(tile.0, tile.1))
+        self.selected_tile
+            .map(|tile| self.zone_area(tile.0, tile.1))
     }
 
     pub fn unhighlight_all_tiles(&mut self) {
@@ -457,7 +457,7 @@ impl Grid {
             }
         }
 
-        EndPaint(window.0, &paint);
+        let _ = EndPaint(window.0, &paint);
     }
 }
 
@@ -475,8 +475,8 @@ impl Tile {
         FillRect(hdc, &area.into(), fill_brush);
         FrameRect(hdc, &area.into(), frame_brush);
 
-        DeleteObject(fill_brush as *mut _);
-        DeleteObject(frame_brush as *mut _);
+        let _ = DeleteObject(fill_brush);
+        let _ = DeleteObject(frame_brush);
     }
 
     unsafe fn fill_brush(self) -> HBRUSH {

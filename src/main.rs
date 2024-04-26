@@ -1,17 +1,16 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #![allow(non_snake_case)]
 
+use anyhow::Error;
+use crossbeam_channel::{bounded, select, unbounded, Receiver, Sender};
+use lazy_static::lazy_static;
 use std::{
     mem, result,
     sync::{Arc, Mutex},
 };
-
-use anyhow::Error;
-use crossbeam_channel::{bounded, select, unbounded, Receiver, Sender};
-use lazy_static::lazy_static;
-
-use winapi::um::winuser::{
-    SetForegroundWindow, ShowWindow, TrackMouseEvent, SW_SHOW, TME_LEAVE, TRACKMOUSEEVENT,
+use windows::Win32::UI::{
+    Input::KeyboardAndMouse::{TrackMouseEvent, TME_LEAVE, TRACKMOUSEEVENT},
+    WindowsAndMessaging::{SetForegroundWindow, ShowWindow, SW_SHOW},
 };
 
 use crate::common::{get_foreground_window, report_and_exit, show_msg_box, Rect};
@@ -112,8 +111,8 @@ fn main() {
 
                         spawn_foreground_hook(close_channel.1.clone());
 
-                        ShowWindow(grid_window.as_ref().unwrap().0, SW_SHOW);
-                        SetForegroundWindow(grid_window.as_ref().unwrap().0);
+                        let _ = ShowWindow(grid_window.as_ref().unwrap().0, SW_SHOW);
+                        let _ = SetForegroundWindow(grid_window.as_ref().unwrap().0);
                     }
                     Message::GridWindow(window) => {
                         grid_window = Some(window);
@@ -180,7 +179,7 @@ fn main() {
                             event_track.dwFlags = TME_LEAVE;
                             event_track.hwndTrack = window.0;
 
-                            TrackMouseEvent(&mut event_track);
+                            let _ = TrackMouseEvent(&mut event_track);
 
                             track_mouse = true;
                         }

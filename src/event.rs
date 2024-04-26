@@ -1,18 +1,16 @@
+use crossbeam_channel::{select, Receiver};
 use std::mem;
-use std::ptr;
 use std::thread;
 use std::time::Duration;
-
-use crossbeam_channel::{select, Receiver};
-
-use winapi::shared::{
-    minwindef::DWORD,
-    windef::{HWINEVENTHOOK, HWND},
-};
-use winapi::um::winnt::LONG;
-use winapi::um::winuser::{
-    DispatchMessageW, PeekMessageW, SetWinEventHook, TranslateMessage, EVENT_SYSTEM_FOREGROUND,
-    WINEVENT_OUTOFCONTEXT,
+use windows::Win32::{
+    Foundation::{HMODULE, HWND},
+    UI::{
+        Accessibility::{SetWinEventHook, HWINEVENTHOOK},
+        WindowsAndMessaging::{
+            DispatchMessageW, PeekMessageW, TranslateMessage, EVENT_SYSTEM_FOREGROUND,
+            PEEK_MESSAGE_REMOVE_TYPE, WINEVENT_OUTOFCONTEXT,
+        },
+    },
 };
 
 use crate::common::get_active_monitor_name;
@@ -25,7 +23,7 @@ pub fn spawn_foreground_hook(close_msg: Receiver<()>) {
         SetWinEventHook(
             EVENT_SYSTEM_FOREGROUND,
             EVENT_SYSTEM_FOREGROUND,
-            ptr::null_mut(),
+            HMODULE::default(),
             Some(callback),
             0,
             0,
@@ -33,9 +31,10 @@ pub fn spawn_foreground_hook(close_msg: Receiver<()>) {
         );
 
         let mut msg = mem::zeroed();
+        let hwnd: HWND = Default::default();
         loop {
-            if PeekMessageW(&mut msg, ptr::null_mut(), 0, 0, 1) > 0 {
-                TranslateMessage(&msg);
+            if PeekMessageW(&mut msg, hwnd, 0, 1, PEEK_MESSAGE_REMOVE_TYPE(0)).into() {
+                let _ = TranslateMessage(&msg);
                 DispatchMessageW(&msg);
             };
 
@@ -74,12 +73,12 @@ pub fn spawn_track_monitor_thread(close_msg: Receiver<()>) {
 
 unsafe extern "system" fn callback(
     _hWinEventHook: HWINEVENTHOOK,
-    _event: DWORD,
+    _event: u32,
     hwnd: HWND,
-    _idObject: LONG,
-    _idChild: LONG,
-    _idEventThread: DWORD,
-    _dwmsEventTime: DWORD,
+    _idObject: i32,
+    _idChild: i32,
+    _idEventThread: u32,
+    _dwmsEventTime: u32,
 ) {
     let sender = &CHANNEL.0.clone();
     let _ = sender.send(Message::ActiveWindowChange(Window(hwnd)));

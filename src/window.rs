@@ -1,9 +1,10 @@
 use std::mem;
-use std::ptr;
-
-use winapi::shared::windef::HWND;
-use winapi::um::winuser::{
-    GetWindowInfo, GetWindowRect, SetWindowPos, ShowWindow, SWP_NOACTIVATE, SW_RESTORE, WINDOWINFO,
+use windows::Win32::{
+    Foundation::HWND,
+    UI::WindowsAndMessaging::{
+        GetWindowInfo, GetWindowRect, SetWindowPos, ShowWindow, SWP_NOACTIVATE, SW_RESTORE,
+        WINDOWINFO, WINDOW_EX_STYLE, WINDOW_STYLE,
+    },
 };
 
 use crate::common::Rect;
@@ -24,7 +25,7 @@ impl Window {
         unsafe {
             let mut rect = mem::zeroed();
 
-            GetWindowRect(self.0, &mut rect);
+            let _ = GetWindowRect(self.0, &mut rect);
 
             rect.into()
         }
@@ -32,7 +33,7 @@ impl Window {
 
     pub fn set_pos(&mut self, rect: Rect, insert_after: Option<Window>) {
         unsafe {
-            SetWindowPos(
+            let _ = SetWindowPos(
                 self.0,
                 insert_after.unwrap_or_default().0,
                 rect.x,
@@ -48,7 +49,7 @@ impl Window {
         let mut info: WINDOWINFO = mem::zeroed();
         info.cbSize = mem::size_of::<WINDOWINFO>() as u32;
 
-        GetWindowInfo(self.0, &mut info);
+        let _ = GetWindowInfo(self.0, &mut info);
 
         info.into()
     }
@@ -71,14 +72,14 @@ impl Window {
 
     pub fn restore(&mut self) {
         unsafe {
-            ShowWindow(self.0, SW_RESTORE);
+            let _ = ShowWindow(self.0, SW_RESTORE);
         };
     }
 }
 
 impl Default for Window {
     fn default() -> Self {
-        Window(ptr::null_mut())
+        Window(HWND::default())
     }
 }
 
@@ -92,8 +93,8 @@ impl PartialEq for Window {
 pub struct WindowInfo {
     pub window_rect: Rect,
     pub client_rect: Rect,
-    pub styles: u32,
-    pub extended_styles: u32,
+    pub styles: WINDOW_STYLE,
+    pub extended_styles: WINDOW_EX_STYLE,
     pub x_borders: u32,
     pub y_borders: u32,
 }

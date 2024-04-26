@@ -1,29 +1,26 @@
 use std::mem;
-use std::ptr;
 use std::thread;
-
-use winapi::shared::{
-    minwindef::{LOWORD, LPARAM, LRESULT, UINT, WPARAM},
-    windef::{HWND, POINT},
-};
-use winapi::um::libloaderapi::GetModuleHandleW;
-use winapi::um::shellapi::{
-    ShellExecuteW, Shell_NotifyIconW, NIF_ICON, NIF_MESSAGE, NIF_TIP, NIM_ADD, NIM_DELETE,
-    NOTIFYICONDATAW,
-};
-use winapi::um::wingdi::{CreateSolidBrush, RGB};
-use winapi::um::winuser::{
-    CheckMenuItem, CreateIconFromResourceEx, CreatePopupMenu, CreateWindowExW, DefWindowProcW,
-    DestroyMenu, DispatchMessageW, GetCursorPos, GetMessageW, InsertMenuW, MessageBoxW,
-    PostMessageW, PostQuitMessage, RegisterClassExW, SendMessageW, SetFocus, SetForegroundWindow,
-    SetMenuDefaultItem, SetMenuItemBitmaps, TrackPopupMenu, TranslateMessage, LR_DEFAULTCOLOR,
-    MB_ICONINFORMATION, MB_OK, MF_BYPOSITION, MF_CHECKED, MF_STRING, MF_UNCHECKED, SW_SHOW,
-    TPM_LEFTALIGN, TPM_NONOTIFY, TPM_RETURNCMD, TPM_RIGHTBUTTON, WM_APP, WM_CLOSE, WM_COMMAND,
-    WM_CREATE, WM_INITMENUPOPUP, WM_LBUTTONDBLCLK, WM_RBUTTONUP, WNDCLASSEXW, WS_EX_NOACTIVATE,
+use windows::{
+    core::{w, PCWSTR, PWSTR},
+    Win32::{
+        Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM},
+        Graphics::Gdi::{CreateSolidBrush, HBITMAP},
+        System::LibraryLoader::GetModuleHandleW,
+        UI::{
+            Input::KeyboardAndMouse::SetFocus,
+            Shell::{
+                ShellExecuteW, Shell_NotifyIconW, NIF_ICON, NIF_MESSAGE, NIF_TIP, NIM_ADD,
+                NIM_DELETE, NOTIFYICONDATAW,
+            },
+            WindowsAndMessaging::{
+                CheckMenuItem, CreateIconFromResourceEx, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyMenu, DispatchMessageW, GetCursorPos, GetMessageW, InsertMenuW, MessageBoxW, PostMessageW, PostQuitMessage, RegisterClassExW, SendMessageW, SetForegroundWindow, SetMenuDefaultItem, SetMenuItemBitmaps, TrackPopupMenu, TranslateMessage, HMENU, LR_DEFAULTCOLOR, MB_ICONINFORMATION, MB_OK, MF_BYPOSITION, MF_CHECKED, MF_STRING, MF_UNCHECKED, SW_SHOW, TPM_LEFTALIGN, TPM_NONOTIFY, TPM_RETURNCMD, TPM_RIGHTBUTTON, WINDOW_STYLE, WM_APP, WM_CLOSE, WM_COMMAND, WM_CREATE, WM_INITMENUPOPUP, WM_LBUTTONDBLCLK, WM_RBUTTONUP, WNDCLASSEXW, WS_EX_NOACTIVATE
+            },
+        },
+    },
 };
 
 use crate::autostart;
-use crate::common::show_msg_box;
+use crate::common::{show_msg_box, LOWORD, RGB};
 use crate::config;
 use crate::str_to_wide;
 use crate::Message;
@@ -38,37 +35,37 @@ static mut MODAL_SHOWN: bool = false;
 
 pub unsafe fn spawn_sys_tray() {
     thread::spawn(|| {
-        let hInstance = GetModuleHandleW(ptr::null());
+        let hInstance = GetModuleHandleW(PCWSTR::null()).expect("failed GetModuleHandleW");
 
-        let class_name = str_to_wide!("Grout Tray");
+        let class_name = w!("Grout Tray");
 
         let mut class = mem::zeroed::<WNDCLASSEXW>();
         class.cbSize = mem::size_of::<WNDCLASSEXW>() as u32;
         class.lpfnWndProc = Some(callback);
-        class.hInstance = hInstance;
-        class.lpszClassName = class_name.as_ptr();
+        class.hInstance = hInstance.into();
+        class.lpszClassName = class_name;
         class.hbrBackground = CreateSolidBrush(RGB(0, 77, 128));
 
         RegisterClassExW(&class);
 
         CreateWindowExW(
             WS_EX_NOACTIVATE,
-            class_name.as_ptr(),
-            ptr::null(),
+            class_name,
+            PCWSTR::null(),
+            WINDOW_STYLE(0),
             0,
             0,
             0,
             0,
-            0,
-            ptr::null_mut(),
-            ptr::null_mut(),
+            HWND::default(),
+            HMENU::default(),
             hInstance,
-            ptr::null_mut(),
+            None,
         );
 
         let mut msg = mem::zeroed();
-        while GetMessageW(&mut msg, ptr::null_mut(), 0, 0) != 0 {
-            TranslateMessage(&msg);
+        while GetMessageW(&mut msg, HWND::default(), 0, 0).into() {
+            let _ = TranslateMessage(&msg);
             DispatchMessageW(&msg);
         }
     });
@@ -77,15 +74,9 @@ pub unsafe fn spawn_sys_tray() {
 unsafe fn add_icon(hwnd: HWND) {
     let icon_bytes = include_bytes!("../assets/icon_32.png");
 
-    let icon_handle = CreateIconFromResourceEx(
-        icon_bytes.as_ptr() as *mut _,
-        icon_bytes.len() as u32,
-        1,
-        0x0003_0000,
-        32,
-        32,
-        LR_DEFAULTCOLOR,
-    );
+    let icon_handle =
+        CreateIconFromResourceEx(icon_bytes, true, 0x0003_0000, 32, 32, LR_DEFAULTCOLOR)
+            .expect("failed CreateIconFromResourceEx");
 
     let mut tooltip_array = [0u16; 128];
     let tooltip = "Grout";
@@ -102,7 +93,7 @@ unsafe fn add_icon(hwnd: HWND) {
     icon_data.hIcon = icon_handle;
     icon_data.szTip = tooltip_array;
 
-    Shell_NotifyIconW(NIM_ADD, &mut icon_data);
+    let _ = Shell_NotifyIconW(NIM_ADD, &icon_data);
 }
 
 unsafe fn remove_icon(hwnd: HWND) {
@@ -110,7 +101,7 @@ unsafe fn remove_icon(hwnd: HWND) {
     icon_data.hWnd = hwnd;
     icon_data.uID = 1;
 
-    Shell_NotifyIconW(NIM_DELETE, &mut icon_data);
+    let _ = Shell_NotifyIconW(NIM_DELETE, &icon_data);
 }
 
 unsafe fn show_popup_menu(hwnd: HWND) {
@@ -118,30 +109,30 @@ unsafe fn show_popup_menu(hwnd: HWND) {
         return;
     }
 
-    let menu = CreatePopupMenu();
+    let menu = CreatePopupMenu().expect("failed CreatePopupMenu");
 
-    let mut about = str_to_wide!("About...");
-    let mut auto_start = str_to_wide!("Launch at startup");
-    let mut open_config = str_to_wide!("Open Config");
-    let mut exit = str_to_wide!("Exit");
+    let about = w!("About...");
+    let auto_start = w!("Launch at startup");
+    let open_config = w!("Open Config");
+    let exit = w!("Exit");
 
-    InsertMenuW(
-        menu,
-        0,
-        MF_BYPOSITION | MF_STRING,
-        ID_ABOUT as usize,
-        about.as_mut_ptr(),
-    );
+    let _ = InsertMenuW(menu, 0, MF_BYPOSITION | MF_STRING, ID_ABOUT as usize, about);
 
-    InsertMenuW(
+    let _ = InsertMenuW(
         menu,
         1,
         MF_BYPOSITION | MF_STRING,
         ID_AUTOSTART as usize,
-        auto_start.as_mut_ptr(),
+        auto_start,
     );
 
-    SetMenuItemBitmaps(menu, 1, MF_BYPOSITION, ptr::null_mut(), ptr::null_mut());
+    let _ = SetMenuItemBitmaps(
+        menu,
+        1,
+        MF_BYPOSITION,
+        HBITMAP::default(),
+        HBITMAP::default(),
+    );
 
     let checked = if CONFIG.lock().unwrap().auto_start {
         MF_CHECKED
@@ -149,30 +140,24 @@ unsafe fn show_popup_menu(hwnd: HWND) {
         MF_UNCHECKED
     };
 
-    CheckMenuItem(menu, 1, MF_BYPOSITION | checked);
+    CheckMenuItem(menu, 1, (MF_BYPOSITION | checked).0);
 
-    InsertMenuW(
+    let _ = InsertMenuW(
         menu,
         2,
         MF_BYPOSITION | MF_STRING,
         ID_CONFIG as usize,
-        open_config.as_mut_ptr(),
+        open_config,
     );
 
-    InsertMenuW(
-        menu,
-        3,
-        MF_BYPOSITION | MF_STRING,
-        ID_EXIT as usize,
-        exit.as_mut_ptr(),
-    );
+    let _ = InsertMenuW(menu, 3, MF_BYPOSITION | MF_STRING, ID_EXIT as usize, exit);
 
-    SetMenuDefaultItem(menu, ID_ABOUT as u32, 0);
+    let _ = SetMenuDefaultItem(menu, ID_ABOUT as u32, 0);
     SetFocus(hwnd);
-    SendMessageW(hwnd, WM_INITMENUPOPUP, menu as usize, 0);
+    SendMessageW(hwnd, WM_INITMENUPOPUP, WPARAM(menu.0 as usize), LPARAM::default());
 
     let mut point: POINT = mem::zeroed();
-    GetCursorPos(&mut point);
+    let _ = GetCursorPos(&mut point);
 
     let cmd = TrackPopupMenu(
         menu,
@@ -181,16 +166,16 @@ unsafe fn show_popup_menu(hwnd: HWND) {
         point.y,
         0,
         hwnd,
-        ptr::null_mut(),
+        None,
     );
 
-    SendMessageW(hwnd, WM_COMMAND, cmd as usize, 0);
+    SendMessageW(hwnd, WM_COMMAND, WPARAM(cmd.0 as usize), LPARAM::default());
 
-    DestroyMenu(menu);
+    let _ = DestroyMenu(menu);
 }
 
 unsafe fn show_about() {
-    let mut title = str_to_wide!("About");
+    let title = w!("About");
 
     let msg = format!(
         "Grout - v{}\n\nCopyright © 2020 Cory Forsstrom",
@@ -198,25 +183,26 @@ unsafe fn show_about() {
     );
 
     let mut msg = str_to_wide!(msg);
+    let msg_pwstr = PWSTR(msg.as_mut_ptr());
 
     MessageBoxW(
-        ptr::null_mut(),
-        msg.as_mut_ptr(),
-        title.as_mut_ptr(),
+        HWND::default(),
+        msg_pwstr,
+        title,
         MB_ICONINFORMATION | MB_OK,
     );
 }
 
 unsafe extern "system" fn callback(
     hWnd: HWND,
-    Msg: UINT,
+    Msg: u32,
     wParam: WPARAM,
     lParam: LPARAM,
 ) -> LRESULT {
     match Msg {
         WM_CREATE => {
             add_icon(hWnd);
-            return 0;
+            return LRESULT::default();
         }
         WM_CLOSE => {
             remove_icon(hWnd);
@@ -225,10 +211,10 @@ unsafe extern "system" fn callback(
         }
         WM_COMMAND => {
             if MODAL_SHOWN {
-                return 1;
+                return LRESULT(1);
             }
 
-            match LOWORD(wParam as u32) {
+            match LOWORD(wParam.0) {
                 ID_ABOUT => {
                     MODAL_SHOWN = true;
 
@@ -263,40 +249,41 @@ unsafe extern "system" fn callback(
                         config_path.push("config.toml");
 
                         if config_path.exists() {
-                            let mut operation = str_to_wide!("open");
+                            let operation = w!("open");
                             let mut config_path = str_to_wide!(config_path.to_str().unwrap());
+                            let config_path_pwstr = PWSTR(config_path.as_mut_ptr());
 
                             ShellExecuteW(
                                 hWnd,
-                                operation.as_mut_ptr(),
-                                config_path.as_mut_ptr(),
-                                ptr::null_mut(),
-                                ptr::null_mut(),
+                                operation,
+                                config_path_pwstr,
+                                PCWSTR::null(),
+                                PCWSTR::null(),
                                 SW_SHOW,
                             );
                         }
                     }
                 }
                 ID_EXIT => {
-                    PostMessageW(hWnd, WM_CLOSE, 0, 0);
+                    let _ = PostMessageW(hWnd, WM_CLOSE, WPARAM::default(), LPARAM::default());
                 }
                 _ => {}
             }
 
-            return 0;
+            return LRESULT(0);
         }
         WM_APP => {
-            match lParam as u32 {
+            match lParam.0 as u32 {
                 WM_LBUTTONDBLCLK => show_about(),
                 WM_RBUTTONUP => {
-                    SetForegroundWindow(hWnd);
+                    let _ = SetForegroundWindow(hWnd);
                     show_popup_menu(hWnd);
-                    PostMessageW(hWnd, WM_APP + 1, 0, 0);
+                    let _ = PostMessageW(hWnd, WM_APP + 1, WPARAM::default(), LPARAM::default());
                 }
                 _ => {}
             }
 
-            return 0;
+            return LRESULT(0);
         }
         _ => {}
     }

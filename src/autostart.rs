@@ -1,15 +1,19 @@
+use anyhow::format_err;
 use std::env;
 use std::fs;
 use std::mem;
-use std::ptr;
+use windows::{
+    core::{w, PCWSTR},
+    Win32::{
+        Foundation::WIN32_ERROR,
+        System::Registry::{
+            RegCreateKeyExW, RegDeleteKeyValueW, RegSetValueExW, HKEY, HKEY_CURRENT_USER,
+            KEY_SET_VALUE, REG_OPTION_NON_VOLATILE, REG_SZ,
+        },
+    },
+};
 
-use anyhow::format_err;
-
-use winapi::shared::minwindef::HKEY;
-use winapi::um::winnt::{KEY_SET_VALUE, REG_OPTION_NON_VOLATILE, REG_SZ};
-use winapi::um::winreg::{RegCreateKeyExW, RegDeleteKeyValueW, RegSetValueExW, HKEY_CURRENT_USER};
-
-use crate::{str_to_wide, Result};
+use crate::Result;
 
 pub unsafe fn toggle_autostart_registry_key(enabled: bool) -> Result<()> {
     let mut app_path =
@@ -22,40 +26,29 @@ pub unsafe fn toggle_autostart_registry_key(enabled: bool) -> Result<()> {
         fs::copy(current_path, &app_path)?;
     }
 
-    let app_path = str_to_wide!(app_path.to_str().unwrap_or_default());
-    let mut key_name = str_to_wide!("Software\\Microsoft\\Windows\\CurrentVersion\\Run");
-    let mut value_name = str_to_wide!("grout");
+    let app_path = app_path.to_str().unwrap_or_default();
+    let key_name = w!("Software\\Microsoft\\Windows\\CurrentVersion\\Run");
+    let value_name = w!("grout");
 
     let mut key: HKEY = mem::zeroed();
 
     if enabled {
         if RegCreateKeyExW(
             HKEY_CURRENT_USER,
-            key_name.as_mut_ptr(),
+            key_name,
             0,
-            ptr::null_mut(),
+            PCWSTR::null(),
             REG_OPTION_NON_VOLATILE,
             KEY_SET_VALUE,
-            ptr::null_mut(),
+            None,
             &mut key,
-            ptr::null_mut(),
-        ) == 0
+            None,
+        ) == WIN32_ERROR(0)
         {
-            RegSetValueExW(
-                key,
-                value_name.as_mut_ptr(),
-                0,
-                REG_SZ,
-                app_path.as_ptr() as _,
-                app_path.len() as u32 * 2,
-            );
+            let _ = RegSetValueExW(key, value_name, 0, REG_SZ, Some(app_path.as_bytes()));
         }
     } else {
-        RegDeleteKeyValueW(
-            HKEY_CURRENT_USER,
-            key_name.as_mut_ptr(),
-            value_name.as_mut_ptr(),
-        );
+        let _ = RegDeleteKeyValueW(HKEY_CURRENT_USER, key_name, value_name);
     }
 
     Ok(())

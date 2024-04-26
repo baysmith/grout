@@ -1,10 +1,14 @@
 use std::mem;
-use std::ptr;
 use std::thread;
-
-use winapi::um::winuser::{
-    DispatchMessageW, GetKeyboardLayout, GetMessageW, RegisterHotKey, TranslateMessage,
-    VkKeyScanExW, MOD_ALT, MOD_CONTROL, MOD_NOREPEAT, MOD_SHIFT, MOD_WIN, WM_HOTKEY,
+use windows::Win32::{
+    Foundation::HWND,
+    UI::{
+        Input::KeyboardAndMouse::{
+            GetKeyboardLayout, RegisterHotKey, VkKeyScanExW, HOT_KEY_MODIFIERS, MOD_ALT,
+            MOD_CONTROL, MOD_NOREPEAT, MOD_SHIFT, MOD_WIN,
+        },
+        WindowsAndMessaging::{DispatchMessageW, GetMessageW, TranslateMessage, WM_HOTKEY},
+    },
 };
 
 use crate::common::report_and_exit;
@@ -36,21 +40,23 @@ pub fn spawn_hotkey_thread(hotkey_str: &str, hotkey_type: HotkeyType) {
     let hotkey_str = hotkey_str.to_owned();
     thread::spawn(move || unsafe {
         let sender = &CHANNEL.0.clone();
+        let hwnd: HWND = Default::default();
 
         let result = RegisterHotKey(
-            ptr::null_mut(),
+            hwnd,
             0,
-            compile_modifiers(&hotkey, &hotkey_str) | MOD_NOREPEAT as u32,
+            compile_modifiers(&hotkey, &hotkey_str) | MOD_NOREPEAT,
             get_vkcode(virtual_key_char),
         );
 
-        if result == 0 {
+        if result.is_err() {
             report_and_exit(&format!("Failed to assign hot key <{}>. Either program is already running or hotkey is already assigned in another program.", hotkey_str));
         }
 
         let mut msg = mem::zeroed();
-        while GetMessageW(&mut msg, ptr::null_mut(), 0, 0) != 0 {
-            TranslateMessage(&msg);
+        let hwnd: HWND = Default::default();
+        while GetMessageW(&mut msg, hwnd, 0, 0).into() {
+            let _ = TranslateMessage(&msg);
             DispatchMessageW(&msg);
 
             if msg.message == WM_HOTKEY {
@@ -60,14 +66,14 @@ pub fn spawn_hotkey_thread(hotkey_str: &str, hotkey_type: HotkeyType) {
     });
 }
 
-fn compile_modifiers(activators: &[String], hotkey_str: &str) -> u32 {
-    let mut code: u32 = 0;
+fn compile_modifiers(activators: &[String], hotkey_str: &str) -> HOT_KEY_MODIFIERS {
+    let mut code: HOT_KEY_MODIFIERS = Default::default();
     for key in activators {
         match key.as_str() {
-            "ALT" => code |= MOD_ALT as u32,
-            "CTRL" => code |= MOD_CONTROL as u32,
-            "SHIFT" => code |= MOD_SHIFT as u32,
-            "WIN" => code |= MOD_WIN as u32,
+            "ALT" => code |= MOD_ALT,
+            "CTRL" => code |= MOD_CONTROL,
+            "SHIFT" => code |= MOD_SHIFT,
+            "WIN" => code |= MOD_WIN,
             _ => report_and_exit(&format!("Invalid hotkey <{}>: Unidentified modifier in hotkey combination. Valid modifiers are CTRL, ALT, SHIFT, WIN.", hotkey_str))
         }
     }

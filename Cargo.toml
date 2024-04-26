@@ -15,6 +15,18 @@ regex = "1.10"
 ron = "0.8"
 serde = { version = "1.0", features = ['derive'] }
 
-[dependencies.winapi]
-version = "0.3"
-features = ["winuser", "wingdi", "libloaderapi", "errhandlingapi", "shellapi", "winreg"]
+[dependencies.windows]
+version = "0.56"
+features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_Security",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Registry",
+    "Win32_UI_Accessibility",
+    "Win32_UI_Controls",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_Shell",
+    "Win32_UI_TextServices",
+    "Win32_UI_WindowsAndMessaging",
+]
