@@ -43,13 +43,14 @@ pub fn load_config() -> Result<Config> {
         write(&config_path, EXAMPLE_CONFIG)?;
     }
 
-    let mut config = config::Config::default();
-    config.merge(config::Config::try_from(&Config::default())?)?;
-
-    let file_config = config::File::from(config_path).format(config::FileFormat::Yaml);
-
-    let config = config.merge(file_config)?;
-    Ok(config.clone().try_into()?)
+    config::Config::builder()
+        .add_source(config::File::new(
+            config_path.to_str().expect("invalid config path"),
+            config::FileFormat::Yaml,
+        ))
+        .build()?
+        .try_deserialize::<Config>()
+        .map_err(|e| e.into())
 }
 
 pub fn toggle_autostart() -> Result<()> {
