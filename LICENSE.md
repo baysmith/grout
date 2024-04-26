@@ -1,5 +1,6 @@
 MIT License
 
+Copyright (c) 2024 Bradley Smith
 Copyright (c) 2020 tarkah
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
