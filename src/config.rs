@@ -64,7 +64,9 @@ pub fn toggle_autostart() -> Result<()> {
 
     config.read_to_string(&mut config_str)?;
 
-    let mut config_doc = config_str.parse::<DocumentMut>().expect("invalid config.toml");
+    let mut config_doc = config_str
+        .parse::<DocumentMut>()
+        .expect("invalid config.toml");
     let enabled = if let Some(auto_start) = config_doc["auto_start"].as_bool() {
         !auto_start
     } else {

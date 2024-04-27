@@ -13,7 +13,15 @@ use windows::{
                 NIM_DELETE, NOTIFYICONDATAW,
             },
             WindowsAndMessaging::{
-                CheckMenuItem, CreateIconFromResourceEx, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyMenu, DispatchMessageW, GetCursorPos, GetMessageW, InsertMenuW, MessageBoxW, PostMessageW, PostQuitMessage, RegisterClassExW, SendMessageW, SetForegroundWindow, SetMenuDefaultItem, SetMenuItemBitmaps, TrackPopupMenu, TranslateMessage, HMENU, LR_DEFAULTCOLOR, MB_ICONINFORMATION, MB_OK, MF_BYPOSITION, MF_CHECKED, MF_STRING, MF_UNCHECKED, SW_SHOW, TPM_LEFTALIGN, TPM_NONOTIFY, TPM_RETURNCMD, TPM_RIGHTBUTTON, WINDOW_STYLE, WM_APP, WM_CLOSE, WM_COMMAND, WM_CREATE, WM_INITMENUPOPUP, WM_LBUTTONDBLCLK, WM_RBUTTONUP, WNDCLASSEXW, WS_EX_NOACTIVATE
+                CheckMenuItem, CreateIconFromResourceEx, CreatePopupMenu, CreateWindowExW,
+                DefWindowProcW, DestroyMenu, DispatchMessageW, GetCursorPos, GetMessageW,
+                InsertMenuW, MessageBoxW, PostMessageW, PostQuitMessage, RegisterClassExW,
+                SendMessageW, SetForegroundWindow, SetMenuDefaultItem, SetMenuItemBitmaps,
+                TrackPopupMenu, TranslateMessage, HMENU, LR_DEFAULTCOLOR, MB_ICONINFORMATION,
+                MB_OK, MF_BYPOSITION, MF_CHECKED, MF_STRING, MF_UNCHECKED, SW_SHOW, TPM_LEFTALIGN,
+                TPM_NONOTIFY, TPM_RETURNCMD, TPM_RIGHTBUTTON, WINDOW_STYLE, WM_APP, WM_CLOSE,
+                WM_COMMAND, WM_CREATE, WM_INITMENUPOPUP, WM_LBUTTONDBLCLK, WM_RBUTTONUP,
+                WNDCLASSEXW, WS_EX_NOACTIVATE,
             },
         },
     },
@@ -154,7 +162,12 @@ unsafe fn show_popup_menu(hwnd: HWND) {
 
     let _ = SetMenuDefaultItem(menu, ID_ABOUT as u32, 0);
     SetFocus(hwnd);
-    SendMessageW(hwnd, WM_INITMENUPOPUP, WPARAM(menu.0 as usize), LPARAM::default());
+    SendMessageW(
+        hwnd,
+        WM_INITMENUPOPUP,
+        WPARAM(menu.0 as usize),
+        LPARAM::default(),
+    );
 
     let mut point: POINT = mem::zeroed();
     let _ = GetCursorPos(&mut point);
