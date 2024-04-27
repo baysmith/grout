@@ -116,6 +116,7 @@ pub unsafe fn get_active_monitor_name() -> String {
     };
 
     let mut info: MONITORINFOEXW = Default::default();
+    info.monitorInfo.cbSize = u32::try_from(std::mem::size_of::<MONITORINFOEXW>()).expect("failed size_fo MONITORINFOEXW");
 
     let _ = GetMonitorInfoW(active_monitor, &mut info as *mut MONITORINFOEXW as *mut _);
 
