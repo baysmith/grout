@@ -12,9 +12,6 @@ use crate::config::Config;
 use crate::window::Window;
 use crate::ACTIVE_PROFILE;
 
-const TILE_WIDTH: u32 = 48;
-const TILE_HEIGHT: u32 = 48;
-
 pub struct Grid {
     pub shift_down: bool,
     pub control_down: bool,
@@ -31,6 +28,8 @@ pub struct Grid {
     tiles: Vec<Vec<Tile>>, // tiles[row][column]
     active_config: GridConfigKey,
     configs: GridConfigs,
+    tile_width: u32,
+    tile_height: u32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
@@ -108,9 +107,26 @@ impl GridCache for GridConfigs {
 
 impl From<&Config> for Grid {
     fn from(config: &Config) -> Self {
+        let mut tile_width = 48;
+        let mut tile_height = 48;
+        let mut grid_margins = 3;
+        if let Some(grid_config) = &config.grid {
+            if let Some(width) = grid_config.tile_width {
+                tile_width = width;
+            }
+            if let Some(height) = grid_config.tile_height {
+                tile_height = height;
+            }
+            if let Some(margins) = grid_config.margins {
+                grid_margins = margins;
+            }
+        }
         Grid {
             zone_margins: config.margins,
             border_margins: config.window_padding,
+            tile_width,
+            tile_height,
+            grid_margins,
             ..Default::default()
         }
     }
@@ -142,6 +158,8 @@ impl Default for Grid {
             tiles: vec![vec![Tile::default(); columns]; rows],
             active_config,
             configs,
+            tile_width: 48,
+            tile_height: 48,
         }
     }
 }
@@ -180,11 +198,11 @@ impl Grid {
     }
 
     pub fn dimensions(&self) -> (u32, u32) {
-        let width = self.columns() as u32 * TILE_WIDTH
+        let width = self.columns() as u32 * self.tile_width
             + (self.columns() as u32 + 1) * self.grid_margins as u32;
 
-        let height =
-            self.rows() as u32 * TILE_HEIGHT + (self.rows() as u32 + 1) * self.grid_margins as u32;
+        let height = self.rows() as u32 * self.tile_height
+            + (self.rows() as u32 + 1) * self.grid_margins as u32;
 
         (width, height)
     }
@@ -255,15 +273,16 @@ impl Grid {
     }
 
     fn tile_area(&self, row: usize, column: usize) -> Rect {
-        let x = column as i32 * TILE_WIDTH as i32 + (column as i32 + 1) * self.grid_margins as i32;
+        let x =
+            column as i32 * self.tile_width as i32 + (column as i32 + 1) * self.grid_margins as i32;
 
-        let y = row as i32 * TILE_HEIGHT as i32 + (row as i32 + 1) * self.grid_margins as i32;
+        let y = row as i32 * self.tile_height as i32 + (row as i32 + 1) * self.grid_margins as i32;
 
         Rect {
             x,
             y,
-            width: TILE_WIDTH as i32,
-            height: TILE_HEIGHT as i32,
+            width: self.tile_width as i32,
+            height: self.tile_height as i32,
         }
     }
 

@@ -27,6 +27,12 @@ hotkey = "CTRL+ALT+S"
 
 # Automatically launch program on startup
 auto_start = false
+
+# Optional customization of grid dimensions
+#[grid]
+#tile_width = 48
+#tile_height = 48
+#margins = 3
 "#;
 
 pub fn load_config() -> Result<Config> {
@@ -80,6 +86,13 @@ pub fn toggle_autostart() -> Result<()> {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CustomGridConfig {
+    pub tile_width: Option<u32>,
+    pub tile_height: Option<u32>,
+    pub margins: Option<u8>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Config {
     pub margins: u8,
     pub window_padding: u8,
@@ -87,6 +100,7 @@ pub struct Config {
     pub hotkey_quick_resize: Option<String>,
     pub hotkey_maximize_toggle: Option<String>,
     pub auto_start: bool,
+    pub grid: Option<CustomGridConfig>,
 }
 
 impl Default for Config {
@@ -98,6 +112,7 @@ impl Default for Config {
             hotkey_quick_resize: None,
             hotkey_maximize_toggle: None,
             auto_start: false,
+            grid: None,
         }
     }
 }
