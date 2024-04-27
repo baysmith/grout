@@ -15,7 +15,7 @@ pub use grid::spawn_grid_window;
 mod preview;
 pub use preview::spawn_preview_window;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Default, Debug)]
 pub struct Window(pub HWND);
 
 unsafe impl Send for Window {}
@@ -74,12 +74,6 @@ impl Window {
         unsafe {
             let _ = ShowWindow(self.0, SW_RESTORE);
         };
-    }
-}
-
-impl Default for Window {
-    fn default() -> Self {
-        Window(HWND::default())
     }
 }
 
