@@ -1,4 +1,5 @@
 use crossbeam_channel::{select, Receiver};
+use csscolorparser::Color;
 use std::mem;
 use std::thread;
 use std::time::Duration;
@@ -17,12 +18,12 @@ use windows::{
     },
 };
 
-use crate::common::RGB;
+use crate::common::color_to_colorref;
 use crate::window::Window;
 use crate::Message;
 use crate::CHANNEL;
 
-pub fn spawn_preview_window(close_msg: Receiver<()>) {
+pub fn spawn_preview_window(close_msg: Receiver<()>, preview_color: Color) {
     thread::spawn(move || unsafe {
         let hInstance = GetModuleHandleW(PCWSTR::null()).expect("failed GetModuleHandleW");
 
@@ -33,7 +34,9 @@ pub fn spawn_preview_window(close_msg: Receiver<()>) {
         class.lpfnWndProc = Some(callback);
         class.hInstance = hInstance.into();
         class.lpszClassName = class_name;
-        class.hbrBackground = CreateSolidBrush(RGB(0, 77, 128));
+
+        let alpha = preview_color.to_rgba8()[3];
+        class.hbrBackground = CreateSolidBrush(color_to_colorref(&preview_color));
 
         RegisterClassExW(&class);
 
@@ -52,7 +55,7 @@ pub fn spawn_preview_window(close_msg: Receiver<()>) {
             None,
         );
 
-        let _ = SetLayeredWindowAttributes(hwnd, COLORREF::default(), 107, LWA_ALPHA);
+        let _ = SetLayeredWindowAttributes(hwnd, COLORREF::default(), alpha, LWA_ALPHA);
 
         let _ = &CHANNEL.0.clone().send(Message::PreviewWindow(Window(hwnd)));
 

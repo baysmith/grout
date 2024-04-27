@@ -1,13 +1,17 @@
+use csscolorparser::Color;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::mem;
-use windows::Win32::Graphics::Gdi::{
-    BeginPaint, CreateSolidBrush, DeleteObject, EndPaint, FillRect, FrameRect, HBRUSH, HDC,
-    PAINTSTRUCT,
+use windows::Win32::{
+    Foundation::COLORREF,
+    Graphics::Gdi::{
+        BeginPaint, CreateSolidBrush, DeleteObject, EndPaint, FillRect, FrameRect, HBRUSH, HDC,
+        PAINTSTRUCT,
+    },
 };
 
-use crate::common::{get_active_monitor_name, get_work_area, Rect, RGB};
+use crate::common::{color_to_colorref, get_active_monitor_name, get_work_area, Rect};
 use crate::config::Config;
 use crate::window::Window;
 use crate::ACTIVE_PROFILE;
@@ -121,14 +125,42 @@ impl From<&Config> for Grid {
                 grid_margins = margins;
             }
         }
-        Grid {
+        let mut grid = Grid {
             zone_margins: config.margins,
             border_margins: config.window_padding,
             tile_width,
             tile_height,
             grid_margins,
             ..Default::default()
+        };
+
+        let mut tile_color: Color = [178, 178, 178, 255].into();
+        let mut tile_hovered: Color = [0, 100, 148, 255].into();
+        let mut tile_selected: Color = [0, 77, 128, 255].into();
+        let mut tile_frame: Color = [0, 0, 0, 255].into();
+        if let Some(colors) = &config.colors {
+            if let Some(color) = &colors.tile {
+                tile_color = color.clone();
+            }
+            if let Some(color) = &colors.tile_hovered {
+                tile_hovered = color.clone();
+            }
+            if let Some(color) = &colors.tile_selected {
+                tile_selected = color.clone();
+            }
+            if let Some(color) = &colors.tile_frame {
+                tile_frame = color.clone();
+            }
         }
+        grid.tiles.iter_mut().for_each(|row| {
+            row.iter_mut().for_each(|tile| {
+                tile.normal_color = color_to_colorref(&tile_color);
+                tile.hovered_color = color_to_colorref(&tile_hovered);
+                tile.selected_color = color_to_colorref(&tile_selected);
+                tile.frame_color = color_to_colorref(&tile_frame);
+            })
+        });
+        grid
     }
 }
 
@@ -484,12 +516,16 @@ impl Grid {
 struct Tile {
     selected: bool,
     hovered: bool,
+    frame_color: COLORREF,
+    normal_color: COLORREF,
+    hovered_color: COLORREF,
+    selected_color: COLORREF,
 }
 
 impl Tile {
     unsafe fn draw(self, hdc: HDC, area: Rect) {
         let fill_brush = self.fill_brush();
-        let frame_brush = CreateSolidBrush(RGB(0, 0, 0));
+        let frame_brush = CreateSolidBrush(self.frame_color);
 
         FillRect(hdc, &area.into(), fill_brush);
         FrameRect(hdc, &area.into(), frame_brush);
@@ -500,15 +536,11 @@ impl Tile {
 
     unsafe fn fill_brush(self) -> HBRUSH {
         let color = if self.selected {
-            RGB(0, 77, 128)
+            self.selected_color
         } else if self.hovered {
-            RGB(0, 100, 148)
+            self.hovered_color
         } else {
-            RGB(
-                (255.0 * (70.0 / 100.0)) as u8,
-                (255.0 * (70.0 / 100.0)) as u8,
-                (255.0 * (70.0 / 100.0)) as u8,
-            )
+            self.normal_color
         };
 
         CreateSolidBrush(color)

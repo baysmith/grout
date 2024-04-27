@@ -2,6 +2,7 @@ use std::fs::{create_dir_all, write, File};
 use std::io::Read;
 
 use anyhow::format_err;
+use csscolorparser::Color;
 use serde::{Deserialize, Serialize};
 use toml_edit::{value, DocumentMut};
 
@@ -33,6 +34,15 @@ auto_start = false
 #tile_width = 48
 #tile_height = 48
 #margins = 3
+
+# Optional customization of colors
+#[colors]
+#tile = "rgb(178, 178, 178)"
+#tile_hovered = "rgb(0, 100, 148)"
+#tile_selected = "rgb(0, 77, 128)"
+#tile_frame = "rgb(0, 0, 0)"
+#grid_background = "rgba(44, 44, 44, 1.0)"
+#preview = "rgba(0, 77, 128, 0.42)"
 "#;
 
 pub fn load_config() -> Result<Config> {
@@ -93,6 +103,16 @@ pub struct CustomGridConfig {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CustomColors {
+    pub tile: Option<Color>,
+    pub tile_hovered: Option<Color>,
+    pub tile_selected: Option<Color>,
+    pub tile_frame: Option<Color>,
+    pub grid_background: Option<Color>,
+    pub preview: Option<Color>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Config {
     pub margins: u8,
     pub window_padding: u8,
@@ -101,6 +121,7 @@ pub struct Config {
     pub hotkey_maximize_toggle: Option<String>,
     pub auto_start: bool,
     pub grid: Option<CustomGridConfig>,
+    pub colors: Option<CustomColors>,
 }
 
 impl Default for Config {
@@ -113,6 +134,7 @@ impl Default for Config {
             hotkey_maximize_toggle: None,
             auto_start: false,
             grid: None,
+            colors: None,
         }
     }
 }

@@ -1,11 +1,12 @@
 use crossbeam_channel::{select, Receiver};
+use csscolorparser::Color;
 use std::mem;
 use std::thread;
 use std::time::Duration;
 use windows::{
     core::{w, PCWSTR},
     Win32::{
-        Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, RECT, WPARAM},
+        Foundation::{COLORREF, HINSTANCE, HWND, LPARAM, LRESULT, RECT, WPARAM},
         Graphics::Gdi::{CreateSolidBrush, InvalidateRect},
         System::LibraryLoader::GetModuleHandleW,
         UI::{
@@ -16,20 +17,21 @@ use windows::{
             },
             WindowsAndMessaging::{
                 CreateWindowExW, DefWindowProcW, DispatchMessageW, LoadCursorW, PeekMessageW,
-                RegisterClassExW, SendMessageW, TranslateMessage, HMENU, IDC_ARROW,
-                PEEK_MESSAGE_REMOVE_TYPE, WM_KEYDOWN, WM_KEYUP, WM_LBUTTONDOWN, WM_LBUTTONUP,
-                WM_MOUSEMOVE, WM_PAINT, WNDCLASSEXW, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
+                RegisterClassExW, SendMessageW, SetLayeredWindowAttributes, TranslateMessage,
+                HMENU, IDC_ARROW, LWA_ALPHA, PEEK_MESSAGE_REMOVE_TYPE, WM_KEYDOWN, WM_KEYUP,
+                WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MOUSEMOVE, WM_PAINT, WNDCLASSEXW, WS_EX_LAYERED,
+                WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
             },
         },
     },
 };
 
-use crate::common::{get_work_area, Rect, HIWORD, LOWORD, RGB};
+use crate::common::{color_to_colorref, get_work_area, Rect, HIWORD, LOWORD};
 use crate::window::Window;
 use crate::Message;
 use crate::{CHANNEL, GRID};
 
-pub fn spawn_grid_window(close_msg: Receiver<()>) {
+pub fn spawn_grid_window(close_msg: Receiver<()>, background: Color) {
     thread::spawn(move || unsafe {
         let hInstance = GetModuleHandleW(PCWSTR::null()).expect("failed GetModuleHandleW");
 
@@ -40,8 +42,10 @@ pub fn spawn_grid_window(close_msg: Receiver<()>) {
         class.lpfnWndProc = Some(callback);
         class.hInstance = hInstance.into();
         class.lpszClassName = class_name;
-        class.hbrBackground = CreateSolidBrush(RGB(44, 44, 44));
         class.hCursor = LoadCursorW(HINSTANCE::default(), IDC_ARROW).expect("failed LoadCursorW");
+
+        let alpha = background.to_rgba8()[3];
+        class.hbrBackground = CreateSolidBrush(color_to_colorref(&background));
 
         RegisterClassExW(&class);
 
@@ -49,7 +53,7 @@ pub fn spawn_grid_window(close_msg: Receiver<()>) {
         let dimensions = GRID.lock().unwrap().dimensions();
 
         let hwnd = CreateWindowExW(
-            WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
+            WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
             class_name,
             PCWSTR::null(),
             WS_POPUP,
@@ -62,6 +66,8 @@ pub fn spawn_grid_window(close_msg: Receiver<()>) {
             hInstance,
             None,
         );
+
+        let _ = SetLayeredWindowAttributes(hwnd, COLORREF::default(), alpha, LWA_ALPHA);
 
         let _ = &CHANNEL.0.clone().send(Message::GridWindow(Window(hwnd)));
 

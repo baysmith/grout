@@ -3,6 +3,7 @@
 
 use anyhow::Error;
 use crossbeam_channel::{bounded, select, unbounded, Receiver, Sender};
+use csscolorparser::Color;
 use lazy_static::lazy_static;
 use std::{
     mem, result,
@@ -98,6 +99,20 @@ fn main() {
         spawn_sys_tray();
     }
 
+    let mut preview_color: Color = [0, 77, 128, 107].into();
+    if let Some(colors) = &config.colors {
+        if let Some(color) = &colors.preview {
+            preview_color = color.clone();
+        }
+    }
+
+    let mut grid_background: Color = [44, 44, 44, 255].into();
+    if let Some(colors) = &config.colors {
+        if let Some(color) = &colors.grid_background {
+            grid_background = color.clone();
+        }
+    }
+
     let mut preview_window: Option<Window> = None;
     let mut grid_window: Option<Window> = None;
     let mut track_mouse = false;
@@ -123,7 +138,7 @@ fn main() {
                         grid.active_window = Some(get_foreground_window());
 
                         spawn_track_monitor_thread(close_channel.1.clone());
-                        spawn_preview_window(close_channel.1.clone());
+                        spawn_preview_window(close_channel.1.clone(), preview_color.clone());
                     }
                     Message::HighlightZone(rect) => {
                         let mut preview_window = preview_window.unwrap_or_default();
@@ -241,7 +256,7 @@ fn main() {
                         grid.quick_resize = quick_resize;
                         grid.previous_resize = previous_resize;
 
-                        spawn_grid_window(close_channel.1.clone());
+                        spawn_grid_window(close_channel.1.clone(), grid_background.clone());
                     }
                     Message::CloseWindows => {
                         preview_window.take();

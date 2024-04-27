@@ -1,3 +1,4 @@
+use csscolorparser::Color;
 use std::convert::TryFrom;
 use std::fmt::{Display, Error, Formatter};
 use std::mem;
@@ -148,6 +149,7 @@ pub fn HIWORD(l: usize) -> u16 {
     ((l >> 16) & 0xffff) as u16
 }
 
-pub fn RGB(r: u8, g: u8, b: u8) -> COLORREF {
+pub fn color_to_colorref(color: &Color) -> COLORREF {
+    let [r, g, b, ..] = color.to_rgba8();
     COLORREF(r as u32 | ((g as u32) << 8) | ((b as u32) << 16))
 }

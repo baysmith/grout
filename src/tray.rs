@@ -4,7 +4,7 @@ use windows::{
     core::{w, PCWSTR, PWSTR},
     Win32::{
         Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM},
-        Graphics::Gdi::{CreateSolidBrush, HBITMAP},
+        Graphics::Gdi::HBITMAP,
         System::LibraryLoader::GetModuleHandleW,
         UI::{
             Input::KeyboardAndMouse::SetFocus,
@@ -28,7 +28,7 @@ use windows::{
 };
 
 use crate::autostart;
-use crate::common::{show_msg_box, LOWORD, RGB};
+use crate::common::{show_msg_box, LOWORD};
 use crate::config;
 use crate::str_to_wide;
 use crate::Message;
@@ -52,7 +52,6 @@ pub unsafe fn spawn_sys_tray() {
         class.lpfnWndProc = Some(callback);
         class.hInstance = hInstance.into();
         class.lpszClassName = class_name;
-        class.hbrBackground = CreateSolidBrush(RGB(0, 77, 128));
 
         RegisterClassExW(&class);
 
