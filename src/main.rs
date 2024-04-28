@@ -14,7 +14,10 @@ use windows::Win32::UI::{
     WindowsAndMessaging::{SetForegroundWindow, ShowWindow, SW_SHOW},
 };
 
-use crate::common::{get_foreground_window, report_and_exit, show_msg_box, Rect};
+use crate::common::{
+    focus_window, get_foreground_window, nav_window_list, next_window, order_window_list,
+    previous_window, report_and_exit, show_msg_box, OrderingDirection, Rect,
+};
 use crate::event::{spawn_foreground_hook, spawn_track_monitor_thread};
 use crate::grid::Grid;
 use crate::hotkey::{spawn_hotkey_thread, HotkeyType};
@@ -87,12 +90,33 @@ fn main() {
 
     spawn_hotkey_thread(&config.hotkey, HotkeyType::Main);
 
-    if let Some(hotkey) = &config.hotkey_quick_resize {
-        spawn_hotkey_thread(hotkey, HotkeyType::QuickResize);
-    }
+    if let Some(optional_hotkeys) = &config.optional_hotkeys {
+        if let Some(hotkey) = &optional_hotkeys.quick_resize {
+            spawn_hotkey_thread(hotkey, HotkeyType::QuickResize);
+        }
 
-    if let Some(hotkey_maximize) = &config.hotkey_maximize_toggle {
-        spawn_hotkey_thread(hotkey_maximize, HotkeyType::Maximize);
+        if let Some(hotkey_maximize) = &optional_hotkeys.maximize_toggle {
+            spawn_hotkey_thread(hotkey_maximize, HotkeyType::Maximize);
+        }
+
+        if let Some(hotkey) = &optional_hotkeys.quick_exit {
+            spawn_hotkey_thread(hotkey, HotkeyType::Exit);
+        }
+
+        if let Some(navigate_hotkeys) = &optional_hotkeys.navigate {
+            if let Some(hotkey) = &navigate_hotkeys.left {
+                spawn_hotkey_thread(hotkey, HotkeyType::NavigateLeft);
+            }
+            if let Some(hotkey) = &navigate_hotkeys.down {
+                spawn_hotkey_thread(hotkey, HotkeyType::NavigateDown);
+            }
+            if let Some(hotkey) = &navigate_hotkeys.up {
+                spawn_hotkey_thread(hotkey, HotkeyType::NavigateUp);
+            }
+            if let Some(hotkey) = &navigate_hotkeys.right {
+                spawn_hotkey_thread(hotkey, HotkeyType::NavigateRight);
+            }
+        }
     }
 
     unsafe {
@@ -179,9 +203,42 @@ fn main() {
 
                         } else if preview_window.is_some() && grid_window.is_some() {
                             let _ = sender.send(Message::CloseWindows);
+                        } else if hotkey_type == HotkeyType::NavigateLeft {
+                            let mut windows = nav_window_list().expect("failed nav_window_list");
+                            if !windows.is_empty() {
+                                order_window_list(&mut windows, OrderingDirection::Horizontal);
+                                if let Some(hwnd) = previous_window(&windows) {
+                                    focus_window(*hwnd);
+                                }
+                            }
+                        } else if hotkey_type == HotkeyType::NavigateDown {
+                            let mut windows = nav_window_list().expect("failed nav_window_list");
+                            if !windows.is_empty() {
+                                order_window_list(&mut windows, OrderingDirection::Vertical);
+                                if let Some(hwnd) = next_window(&windows) {
+                                    focus_window(*hwnd);
+                                }
+                            }
+                        } else if hotkey_type == HotkeyType::NavigateUp {
+                            let mut windows = nav_window_list().expect("failed nav_window_list");
+                            if !windows.is_empty() {
+                                order_window_list(&mut windows, OrderingDirection::Vertical);
+                                if let Some(hwnd) = previous_window(&windows) {
+                                    focus_window(*hwnd);
+                                }
+                            }
+                        } else if hotkey_type == HotkeyType::NavigateRight {
+                            let mut windows = nav_window_list().expect("failed nav_window_list");
+                            if !windows.is_empty() {
+                                order_window_list(&mut windows, OrderingDirection::Horizontal);
+                                if let Some(hwnd) = next_window(&windows) {
+                                    focus_window(*hwnd);
+                                }
+                            }
+                        } else if hotkey_type == HotkeyType::Exit {
+                            std::process::exit(0);
                         } else {
                             let _ = sender.send(Message::InitializeWindows);
-
                             if hotkey_type == HotkeyType::QuickResize {
                                 GRID.lock().unwrap().quick_resize = true;
                             }

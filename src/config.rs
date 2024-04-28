@@ -20,14 +20,23 @@ window_padding = 10
 # Hotkey to activate grid. Valid modifiers are CTRL, ALT, SHIFT, WIN
 hotkey = "CTRL+ALT+S"
 
-# Hotkey to activate grid for a quick resize. Grid will automatically close after resize operation.
-#hotkey_quick_resize = "CTRL+ALT+Q"
-
-# Hotkey to maximize / restore the active window
-#hotkey_maximize_toggle = "CTRL+ALT+X"
-
 # Automatically launch program on startup
 auto_start = false
+
+# Optional hotkeys
+#[optional_hotkeys]
+# Hotkey to activate grid for a quick resize. Grid will automatically close after resize operation.
+#quick_resize = "CTRL+ALT+Q"
+
+# Hotkey to maximize / restore the active window
+#maximize_toggle = "CTRL+ALT+X"
+
+# Navigate foreground window with hotkeys
+#[optional_hotkeys.navigate]
+#left = "ALT+H"
+#down = "ALT+J"
+#up = "ALT+K"
+#right = "ALT+L"
 
 # Optional customization of grid dimensions
 #[grid]
@@ -113,12 +122,27 @@ pub struct CustomColors {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct NavigateHotkeys {
+    pub left: Option<String>,
+    pub down: Option<String>,
+    pub up: Option<String>,
+    pub right: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct OptionalHotkeys {
+    pub quick_resize: Option<String>,
+    pub maximize_toggle: Option<String>,
+    pub navigate: Option<NavigateHotkeys>,
+    pub quick_exit: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Config {
     pub margins: u8,
     pub window_padding: u8,
     pub hotkey: String,
-    pub hotkey_quick_resize: Option<String>,
-    pub hotkey_maximize_toggle: Option<String>,
+    pub optional_hotkeys: Option<OptionalHotkeys>,
     pub auto_start: bool,
     pub grid: Option<CustomGridConfig>,
     pub colors: Option<CustomColors>,
@@ -130,8 +154,7 @@ impl Default for Config {
             margins: 10,
             window_padding: 10,
             hotkey: "CTRL+ALT+S".to_string(),
-            hotkey_quick_resize: None,
-            hotkey_maximize_toggle: None,
+            optional_hotkeys: None,
             auto_start: false,
             grid: None,
             colors: None,

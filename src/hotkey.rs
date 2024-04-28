@@ -20,6 +20,11 @@ pub enum HotkeyType {
     Main,
     QuickResize,
     Maximize,
+    NavigateRight,
+    NavigateLeft,
+    NavigateDown,
+    NavigateUp,
+    Exit,
 }
 
 pub fn spawn_hotkey_thread(hotkey_str: &str, hotkey_type: HotkeyType) {
