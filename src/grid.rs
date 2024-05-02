@@ -1,4 +1,3 @@
-use csscolorparser::Color;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -34,6 +33,10 @@ pub struct Grid {
     configs: GridConfigs,
     tile_width: u32,
     tile_height: u32,
+    tile_frame_color: COLORREF,
+    tile_normal_color: COLORREF,
+    tile_hovered_color: COLORREF,
+    tile_selected_color: COLORREF,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
@@ -134,30 +137,34 @@ impl From<&Config> for Grid {
             ..Default::default()
         };
 
-        let mut tile_color: Color = [178, 178, 178, 255].into();
-        let mut tile_hovered: Color = [0, 100, 148, 255].into();
-        let mut tile_selected: Color = [0, 77, 128, 255].into();
-        let mut tile_frame: Color = [0, 0, 0, 255].into();
         if let Some(colors) = &config.colors {
             if let Some(color) = &colors.tile {
-                tile_color = color.clone();
+                grid.tile_normal_color = color_to_colorref(&color.clone());
             }
             if let Some(color) = &colors.tile_hovered {
-                tile_hovered = color.clone();
+                grid.tile_hovered_color = color_to_colorref(&color.clone());
             }
             if let Some(color) = &colors.tile_selected {
-                tile_selected = color.clone();
+                grid.tile_selected_color = color_to_colorref(&color.clone());
             }
             if let Some(color) = &colors.tile_frame {
-                tile_frame = color.clone();
+                grid.tile_frame_color = color_to_colorref(&color.clone());
             }
         }
+
+        let Grid {
+            tile_normal_color,
+            tile_hovered_color,
+            tile_selected_color,
+            tile_frame_color,
+            ..
+        } = grid;
         grid.tiles.iter_mut().for_each(|row| {
             row.iter_mut().for_each(|tile| {
-                tile.normal_color = color_to_colorref(&tile_color);
-                tile.hovered_color = color_to_colorref(&tile_hovered);
-                tile.selected_color = color_to_colorref(&tile_selected);
-                tile.frame_color = color_to_colorref(&tile_frame);
+                tile.normal_color = tile_normal_color;
+                tile.hovered_color = tile_hovered_color;
+                tile.selected_color = tile_selected_color;
+                tile.frame_color = tile_frame_color;
             })
         });
         grid
@@ -192,6 +199,10 @@ impl Default for Grid {
             configs,
             tile_width: 48,
             tile_height: 48,
+            tile_normal_color: color_to_colorref(&[178, 178, 178, 255].into()),
+            tile_hovered_color: color_to_colorref(&[0, 100, 148, 255].into()),
+            tile_selected_color: color_to_colorref(&[0, 77, 128, 255].into()),
+            tile_frame_color: color_to_colorref(&[0, 0, 0, 255].into()),
         }
     }
 }
@@ -277,13 +288,27 @@ impl Grid {
     }
 
     pub fn add_row(&mut self) {
-        self.tiles.push(vec![Tile::default(); self.columns()]);
+        let tile = Tile {
+            normal_color: self.tile_normal_color,
+            hovered_color: self.tile_hovered_color,
+            selected_color: self.tile_selected_color,
+            frame_color: self.tile_frame_color,
+            ..Default::default()
+        };
+        self.tiles.push(vec![tile; self.columns()]);
         self.save_config();
     }
 
     pub fn add_column(&mut self) {
         for row in self.tiles.iter_mut() {
-            row.push(Tile::default());
+            let tile = Tile {
+                normal_color: self.tile_normal_color,
+                hovered_color: self.tile_hovered_color,
+                selected_color: self.tile_selected_color,
+                frame_color: self.tile_frame_color,
+                ..Default::default()
+            };
+            row.push(tile);
         }
         self.save_config();
     }
